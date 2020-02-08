@@ -1,0 +1,11 @@
+
+**/SConscript
+**/entry_point.c
+**/l0_lowlevel
+**/l1_freertos
+**/l2_utils
+**/l3_drivers
+**/l4_io
+
+**/rtos_hooks
+**/periodics
