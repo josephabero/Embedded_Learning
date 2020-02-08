@@ -2,11 +2,22 @@
 #include <stdio.h>
 
 #include "FreeRTOS.h"
+#include "semphr.h"
 #include "task.h"
 
+#include "l5_application/gpio.h"
 #include "lpc40xx.h"
 
 #define TASK 1
+
+// #####################################################
+// #                                                   #
+// #                 GLOBAL VARIABLES                  #
+// #                                                   #
+// #####################################################
+
+// LPC_GPIO_TypeDef *gpio_port;
+static SemaphoreHandle_t switch_press_indication;
 
 // #####################################################
 // #                                                   #
@@ -15,32 +26,14 @@
 // #####################################################
 
 void led_task(void *pvParameters);
-void gpio0__set_as_input(uint8_t pin_num);
-void gpio0__set_as_output(uint8_t pin_num);
-void gpio0__set_high(uint8_t pin_num);
-void gpio0__set_low(uint8_t pin_num);
-void gpio0__set(uint8_t pin_num, bool high);
-bool gpio0__get_level(uint8_t pin_num);
+void button_task(void *pvParameters);
 
-void gpio1__set_as_input(uint8_t pin_num);
-void gpio1__set_as_output(uint8_t pin_num);
-void gpio1__set_high(uint8_t pin_num);
-void gpio1__set_low(uint8_t pin_num);
-void gpio1__set(uint8_t pin_num, bool high);
-bool gpio1__get_level(uint8_t pin_num);
-
-// #####################################################
-// #                                                   #
-// #                    STRUCTURES                     #
-// #                                                   #
-// #####################################################
-
-typedef struct {
-  // First get gpio0 driver to work only, and if you finish it
-  // you can do the extra credit to also make it work for other Ports
-  // uint8_t port;
-  uint8_t pin;
-} port_pin_s;
+// void gpio_set_as_input(LPC_GPIO_TypeDef *port, uint8_t pin);
+// void gpio_set_as_output(LPC_GPIO_TypeDef *port, uint8_t pin);
+// void gpio_set_high(LPC_GPIO_TypeDef *port, uint8_t pin);
+// void gpio_set_low(LPC_GPIO_TypeDef *port, uint8_t pin);
+// void gpio_set(LPC_GPIO_TypeDef *port, uint8_t pin, bool high);
+// bool gpio_get_level(LPC_GPIO_TypeDef *port, uint8_t pin);
 
 // #####################################################
 // #                                                   #
@@ -49,13 +42,31 @@ typedef struct {
 // #####################################################
 
 int main(void) {
-  static port_pin_s led0 = {18};
-  static port_pin_s led1 = {24};
+  // Onboard LEDs
+  static port_pin_s led3 = {1, 18};
+  // static port_pin_s led2 = {1, 24};
+  // static port_pin_s led1 = {1, 26};
+  // static port_pin_s led0 = {2, 3};
 
-  printf("%i", led0.pin);
+  // Onboard Button
+  // static port_pin_s sw2 = {0, 30};
+  static port_pin_s sw3 = {0, 29};
 
-  xTaskCreate(led_task, "led0", 2048 / sizeof(void *), &led0, PRIORITY_LOW, NULL);
-  xTaskCreate(led_task, "led1", 2048 / sizeof(void *), &led1, PRIORITY_LOW, NULL);
+  // External LED
+
+  // External Button
+
+  // printf("pin0: %i\n", led0.pin);
+  // printf("port0: %i\n", led0.port);
+  // printf("pin1: %i\n", led1.pin);
+  // printf("port1: %i\n", led1.port);
+  switch_press_indication = xSemaphoreCreateBinary();
+
+  xTaskCreate(led_task, "led3", 2048 / sizeof(void *), &led3, PRIORITY_LOW, NULL);
+  // xTaskCreate(led_task, "led1", 2048 / sizeof(void *), &led1, PRIORITY_LOW, NULL);
+
+  xTaskCreate(button_task, "sw3", 2048 / sizeof(void *), &sw3, PRIORITY_LOW, NULL);
+  // xTaskCreate(led_task, "led1", 2048 / sizeof(void *), &led1, PRIORITY_LOW, NULL);
   vTaskStartScheduler();
   return 0;
 }
@@ -70,55 +81,36 @@ int main(void) {
 void led_task(void *pvParameters) {
   port_pin_s *led = (port_pin_s *)(pvParameters);
 
-  // LPC_IOCON->P1_26 &= ~(0b111);   // Set GPIO to function as GPIO
-  gpio1__set_as_output(led->pin); // Set GPIO as Output
+  gpio_set_as_output(led); // Set GPIO as Output
 
   while (1) {
-    // Turn On LED (Active Low LED)
-    gpio1__set_low(led->pin);
-    printf("Turning On: %i\n", gpio1__get_level(led->pin));
-    vTaskDelay(500);
 
-    // Turn Off LED (Active Low LED)
-    gpio1__set_high(led->pin);
-    printf("Turning Off: %i\n", gpio1__get_level(led->pin));
-    vTaskDelay(500);
+    if (xSemaphoreTake(switch_press_indication, 1000)) {
+      // Turn On LED (Active Low LED)
+      gpio_set_low(led);
+      printf("Turning On P%i_%i: %i\n", led->port, led->pin, gpio_get_level(led));
+      vTaskDelay(500);
+
+      // Turn Off LED (Active Low LED)
+      gpio_set_high(led);
+      printf("Turning Off P%i_%i: %i\n", led->port, led->pin, gpio_get_level(led));
+      vTaskDelay(500);
+    } else {
+      puts("Timeout: No switch press indication for 1000ms");
+    }
   }
 }
 
-// #####################################################
-// #                                                   #
-// #                     FUNCTIONS                     #
-// #                                                   #
-// #####################################################
+void button_task(void *pvParameters) {
+  port_pin_s *button = (port_pin_s *)(pvParameters);
 
-void gpio1__set_as_input(uint8_t pin_num) { LPC_GPIO1->DIR &= ~(1 << pin_num); }
+  gpio_set_as_input(button); // Set GPIO as Output
 
-/// Should alter the hardware registers to set the pin as output
-void gpio1__set_as_output(uint8_t pin_num) { LPC_GPIO1->DIR |= (1 << pin_num); }
-
-/// Should alter the hardware registers to set the pin as high
-void gpio1__set_high(uint8_t pin_num) { LPC_GPIO1->PIN |= (1 << pin_num); }
-
-/// Should alter the hardware registers to set the pin as low
-void gpio1__set_low(uint8_t pin_num) { LPC_GPIO1->PIN &= ~(1 << pin_num); }
-
-/**
- * Should alter the hardware registers to set the pin as low
- *
- * @param {bool} high - true => set pin high, false => set pin low
- */
-void gpio1__set(uint8_t pin_num, bool high) {
-  if (high) {
-    gpio1__set_high(pin_num);
-  } else {
-    gpio1__set_low(pin_num);
+  while (1) {
+    if (gpio_get_level(button)) {
+      printf("button pressed\n");
+      xSemaphoreGive(switch_press_indication);
+    }
+    vTaskDelay(100);
   }
 }
-
-/**
- * Should return the state of the pin (input or output, doesn't matter)
- *
- * @return {bool} level of pin high => true, low => false
- */
-bool gpio1__get_level(uint8_t pin_num) { return LPC_GPIO1->PIN & (1 << pin_num); }
