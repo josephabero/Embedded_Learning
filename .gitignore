@@ -9,3 +9,5 @@
 
 **/rtos_hooks
 **/periodics
+
+**/*.PNG
