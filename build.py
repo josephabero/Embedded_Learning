@@ -1,65 +1,67 @@
 import os
 import sys
+import argparse
 from enum import Enum, auto
 
 CONSOLE = os.system
-
-class Option(Enum):
-	BUILD = auto()
-	FLASH = auto()
-	BUILD_AND_FLASH = auto
 
 class Progress(Enum):
 	INIT = auto()
 	BUILDING = auto()
 	BUILD_ERROR = auto()
 	BUILD_SUCCESS = auto()
+	FLASH_SUCCESS = auto()
 
-args = list(sys.argv)
+parser = argparse.ArgumentParser();
+parser.add_argument('--project', action='store', dest='project', required=True)
+parser.add_argument('-b', action='store_true', default=False, dest='build', required=False)
+parser.add_argument('-r', action='store_true', default=False, dest='run', required=False)
+parser.add_argument('-br', action='store_true', default=True, dest='build_and_run', required=False)
 
-option = Option.BUILD_AND_FLASH
-project = None
+args = parser.parse_args()
 
-if "--project" in args:
-	print(args.index("--project"))
-	project = args[args.index("--project") + 1]
-elif "-p" in args:
-	print(args.index("-p"))
-	project = args[args.index("-p") + 1]
+if args.run or args.build:
+	args.build_and_run = False
 
-if "--option" in args:
-	print(args.index("--option"))
-	option = args[args.index("--option") + 1]
-elif "-o" in args:
-	print(args.index("-o"))
-	option = args[args.index("-o") + 1]
+if args.run:		print(f"Going to flash board: {args.project}.bin...")
+elif args.build:    print(f"Going to build: {args.project}...")
+else:				print("Build and Flash...")
 
 
-CONSOLE("echo START...")
+print("START...")
 progress_status = Progress.INIT
 
-if project is not None:
-	if option == Option.BUILD or option == Option.BUILD_AND_FLASH:
-		CONSOLE("echo BUILDING...")
-		progress_status = Progress.BUILDING
-		project_name = sys.argv[2]
-		CONSOLE(f"echo scons --project={str(project_name)}")
-		CONSOLE(f"scons --project={project_name} > error.txt")
-		CONSOLE(f"cat error.txt")
-		CONSOLE(f"cat error.txt | grep error > error.txt")
+if args.build or args.build_and_run:
+	print("BUILDING...")
+	progress_status = Progress.BUILDING
+	print(f"echo scons --project={args.project}")
+	CONSOLE(f"scons --project={args.project} > error.txt")
+
+	# Check if there was a build error
+	CONSOLE(f"cat error.txt")
+	CONSOLE(f"cat error.txt | grep error >> error.txt")
+
+	print("ERROR.TXT")
+	CONSOLE("cat error.txt")
+	filepath = os.getcwd() + "/error.txt"
+	print(os.stat(filepath).st_size)
+	if os.stat(filepath).st_size > 0:
+	    progress_status = Progress.BUILD_ERROR
+	else:
+		CONSOLE("rm error.txt")
+		progress_status = Progress.BUILD_SUCCESS
+
+print(progress_status)
+print(args.run or args.build_and_run)
+print(progress_status != Progress.BUILD_ERROR)
+if args.run or args.build_and_run and progress_status != Progress.BUILD_ERROR:
+	print(f"echo flash_board -i {args.project}.bin")
+	CONSOLE(f"python nxp-programmer/flash.py -i {args.project}.bin")
+
+	# Check if there was a flash error
+	progress_status = Progress.FLASH_SUCCESS
 	
-		print("ERROR.TXT")
-		CONSOLE("cat error.txt")
-		filepath = os.getcwd() + "/error.txt"
-		if os.stat(filepath).st_size > 0:
-		    progress_status = Progress.BUILD_ERROR
-	
-	if (progress_status != Progress.BUILD_ERROR) and (option == Option.FLASH or option == Option.BUILD_AND_FLASH):
-		CONSOLE(f"echo flash_board -i {str(project_name)}.bin")
-		CONSOLE(f"python nxp-programmer/flash.py -i {project_name}.bin")
-	
-	progress_status = Progress.BUILD_SUCCESS
-	CONSOLE("echo BUILD SUCCESSFUL")
+CONSOLE("echo BUILD SUCCESSFUL")
 
 if progress_status == Progress.INIT:
 	CONSOLE(f"echo Build FAILED! Failed at {progress_status}")
