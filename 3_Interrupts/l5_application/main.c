@@ -23,10 +23,13 @@ static SemaphoreHandle_t button_pressed;
 // #               FUNCTION DECLARATIONS               #
 // #                                                   #
 // #####################################################
-
-void button_ISR();
-
 void led_task(void *pvParameters);
+
+void button_ISR() {
+  // to prevent formatting
+  fprintf(stderr, "ISR\n");
+  xSemaphoreGiveFromISR(button_pressed, NULL);
+}
 
 // #####################################################
 // #                                                   #
@@ -35,17 +38,13 @@ void led_task(void *pvParameters);
 // #####################################################
 
 int main(void) {
-  static gpio_s led = {2, 9};
-  static gpio_s button = {2, 7};
+  static gpio_s led = {1, 18};
+  static gpio_s button = {0, 29};
 
   gpio_set_as_input(button);
   gpio_attach_interrupt(button, GPIO_INTR__RISING_EDGE, button_ISR);
 
   NVIC_EnableIRQ(GPIO_IRQn);
-
-  // while (1) {
-  //   delay__ms(100);
-  // }
 
   button_pressed = xSemaphoreCreateBinary();
 
@@ -62,12 +61,6 @@ int main(void) {
 // #                                                   #
 // #####################################################
 
-void button_ISR() {
-  // to prevent formatting
-  xSemaphoreGiveFromISR(button_pressed, (BaseType_t *)led_task);
-  // fprintf(stderr, "ISR%s\n");
-}
-
 void led_task(void *pvParameters) {
   printf("Setting up LED Task...\n");
   gpio_s _led = *(gpio_s *)(pvParameters);
@@ -75,10 +68,12 @@ void led_task(void *pvParameters) {
   printf("Finished setting up LED Task!\n");
 
   while (1) {
-    if (xSemaphoreTakeFromISR(button_pressed, portMAX_DELAY)) {
+    if (xSemaphoreTake(button_pressed, portMAX_DELAY)) {
       // Toggle LED
-      gpio_toggle(_led);
       printf("Toggling P%i_%i: %i\n", _led.port, _led.pin, gpio_get_level(_led));
+      gpio_toggle(_led);
     }
+    printf("LED_TASK\n");
+    vTaskDelay(500);
   }
 }

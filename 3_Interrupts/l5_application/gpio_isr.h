@@ -41,6 +41,7 @@ gpio_s check_interrupt_status();
 void gpio_attach_interrupt(gpio_s gpio, gpio_interrupt_e interrupt_type, function_pointer_t callback) {
   // 1) Store the callback based on the pin at gpio_callbacks_rising
   // 2) Configure GPIO 0 pin for rising or falling edge
+  printf("ATTACH P%i_%i: %i\n", gpio.port, gpio.pin, interrupt_type);
   switch (interrupt_type) {
   case GPIO_INTR__FALLING_EDGE:
     gpio_callbacks_rising[gpio.port][gpio.pin] = callback;
@@ -65,20 +66,19 @@ void gpio_attach_interrupt(gpio_s gpio, gpio_interrupt_e interrupt_type, functio
 void gpio_interrupt_dispatcher(void) {
   // Check which pin generated the interrupt
 
-  const gpio_s gpio_intr = check_interrupt_status();
+  gpio_s gpio_intr = check_interrupt_status();
   function_pointer_t attached_user_handler = gpio_callbacks_rising[gpio_intr.port][gpio_intr.pin];
 
   // Invoke the user registered callback, and then clear the interrupt
   attached_user_handler();
 
-  // if (gpio_intr.port == 0) {
-  //   LPC_GPIOINT->IO0IntClr |= (1 << gpio_intr.pin);
-  // } else if (gpio_intr.port == 2) {
-  //   LPC_GPIOINT->IO2IntClr |= (1 << gpio_intr.pin);
-  // }
-  LPC_GPIOINT->IO2IntClr |= (1 << gpio_intr.pin);
+  // Clear the interrupt
+  if (gpio_intr.port == 0) {
+    LPC_GPIOINT->IO0IntClr |= (1 << gpio_intr.pin);
+  } else if (gpio_intr.port == 2) {
+    LPC_GPIOINT->IO2IntClr |= (1 << gpio_intr.pin);
+  }
   // gpio_clear_interrupt(gpio_intr);
-  // LPC_GPIOINT->IO0IntClr |= (1 << gpio_intr.pin);
 }
 
 gpio_s check_interrupt_status() {
@@ -125,12 +125,10 @@ gpio_s check_interrupt_status() {
   return gpio_intr;
 }
 
-// void gpio_clear_interrupt(const gpio_s gpio) {
-//   LPC_GPIOINT->IO0IntClr |= (1 << 29);
-//   // if (gpio.port == 0) {
-//   //   LPC_GPIOINT->IO0IntClr |= (1 << gpio.pin);
-//   // } // end_if Port 0
-//   // else if (gpio.port == 2) {
-//   //   LPC_GPIOINT->IO2IntClr |= (1 << gpio.pin);
-//   // } // end_if Port 2
-// }
+void gpio_clear_interrupt(gpio_s gpio) {
+  if (gpio.port == 0) {
+    LPC_GPIOINT->IO0IntClr |= (1 << gpio.pin);
+  } else if (gpio.port == 2) {
+    LPC_GPIOINT->IO2IntClr |= (1 << gpio.pin);
+  }
+}

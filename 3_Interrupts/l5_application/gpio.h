@@ -21,7 +21,10 @@ typedef struct {
 // #               FUNCTION DECLARATIONS               #
 // #                                                   #
 // #####################################################
-static LPC_GPIO_TypeDef *gpio_get_struct(gpio_s gpio) { return (LPC_GPIO_TypeDef *)lpc_gpio[gpio.port]; }
+static LPC_GPIO_TypeDef *gpio_get_struct(gpio_s gpio) {
+  // LPC_GPIOX
+  return (LPC_GPIO_TypeDef *)lpc_gpio[gpio.port];
+}
 
 void gpio_set_as_input(gpio_s gpio);
 void gpio_set_as_output(gpio_s gpio);
@@ -64,7 +67,10 @@ void gpio_set(gpio_s gpio, bool high) {
   }
 }
 
-void gpio_toggle(gpio_s gpio) { gpio_set(gpio, !gpio_get_level(gpio)); }
+void gpio_toggle(gpio_s gpio) {
+  // Toggle
+  gpio_set(gpio, !gpio_get_level(gpio));
+}
 
 bool gpio_get_level(gpio_s gpio) {
   LPC_GPIO_TypeDef *LPC_GPIO = gpio_get_struct(gpio);
