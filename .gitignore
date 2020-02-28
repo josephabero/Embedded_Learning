@@ -6,6 +6,7 @@
 **/l2_utils
 **/l3_drivers
 **/l4_io
+**/unittest_header_overrides
 
 **/rtos_hooks
 **/periodics
