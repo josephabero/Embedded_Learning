@@ -39,7 +39,6 @@ gpio_s check_interrupt_status();
 // #####################################################
 
 void gpio_attach_interrupt(gpio_s gpio, gpio_interrupt_e interrupt_type, function_pointer_t callback) {
-  // 1) Store the callback based on the pin at gpio_callbacks_rising
   // 2) Configure GPIO 0 pin for rising or falling edge
   printf("ATTACH P%i_%i: %i\n", gpio.port, gpio.pin, interrupt_type);
   switch (interrupt_type) {

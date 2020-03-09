@@ -26,8 +26,6 @@ static SemaphoreHandle_t button_pressed;
 void led_task(void *pvParameters);
 
 void button_ISR() {
-  // to prevent formatting
-  fprintf(stderr, "ISR\n");
   xSemaphoreGiveFromISR(button_pressed, NULL);
 }
 
