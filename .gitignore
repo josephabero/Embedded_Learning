@@ -12,3 +12,7 @@
 **/periodics
 
 **/*.PNG
+
+**/build
+**/makefile
+**/project*
