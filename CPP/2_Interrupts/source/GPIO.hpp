@@ -26,9 +26,6 @@ class GPIO
         };
         static constexpr size_t kPorts = 2;
         static constexpr size_t kPins = 32; 
-        /// You should not modify any hardware registers at this point
-        /// You should store the port and pin using the constructor.
-        ///
         /// @param port - port number between 0 and 5
         /// @param pin - pin number between 0 and 32
         GPIO(uint8_t port, uint32_t pin);
@@ -53,14 +50,14 @@ class GPIO
         // @param isr  - function to run when the interrupt event occurs.
         // @param edge - condition for the interrupt to occur on.
         void AttachInterruptHandler(sjsu::InterruptHandler isr, Edge edge);
-        // Register GPIO_IRQn here
         static void EnableInterrupts();
     private:
         /// NOTE: Pin state should NEVER be cached! Always check the hardware
         ///       registers for the actual value of the pin.
-        sjsu::lpc40xx::LPC_GPIO_TypeDef *LPC_GPIOx;
         uint8_t _port;
         uint32_t _pin;
+
+        sjsu::lpc40xx::LPC_GPIO_TypeDef *LPC_GPIOx;
         volatile uint32_t *IOxIntEnR;
         volatile uint32_t *IOxIntEnF;
         // Statically allocated a lookup table matrix here of function pointers 
